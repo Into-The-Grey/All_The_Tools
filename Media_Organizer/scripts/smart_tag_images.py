@@ -1,30 +1,20 @@
 import os
+import sys
 import json
 import torch # type: ignore
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel # type: ignore
-from torchvision import transforms # type: ignore
 import csv
-from tqdm import tqdm
 
 # === CONFIG ===
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORGANIZED_DIR = os.path.join(BASE_PATH, "Organized")
 SFW_TAG_FILE = os.path.join(BASE_PATH, "config", "tags_sfw.json")
 LOG_FILE = os.path.join(BASE_PATH, "logs", "media_tags.tsv")
-
 CONFIDENCE_THRESHOLD = 0.3
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 32 if DEVICE == "cuda" else 4
-
-print(f"🔧 Using device: {DEVICE.upper()} | Batch size: {BATCH_SIZE}")
-
-# === INIT CLIP MODEL ===
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 
-# === LOAD TAG FILE ===
+# === LOAD/CREATE TAG FILE ===
 def load_or_init_tags(path, default=[]):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -38,69 +28,72 @@ def load_or_init_tags(path, default=[]):
 sfw_tags = load_or_init_tags(SFW_TAG_FILE)
 
 
-# === GATHER IMAGE PATHS ===
-def get_image_paths(base_dir):
-    valid_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-    img_paths = []
-    for root, _, files in os.walk(base_dir):
+# === Batch gather all image file paths in Organized ===
+def gather_image_files(organized_dir):
+    img_files = []
+    for root, _, files in os.walk(organized_dir):
         for file in files:
-            if file.lower().endswith(valid_exts):
-                img_paths.append(os.path.join(root, file))
-    return img_paths
+            if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".bmp")):
+                img_files.append(os.path.join(root, file))
+    return img_files
 
 
-# === TAGGING FUNCTION ===
-def tag_images(paths, tag_list):
-    images = [Image.open(p).convert("RGB") for p in paths]
-    inputs = processor(text=tag_list, images=images, return_tensors="pt", padding=True)
-    inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = outputs.logits_per_image.softmax(dim=1).cpu().tolist()
-
-    results = []
-    for path, prob_row in zip(paths, probs):
-        tags = [
-            tag for tag, prob in zip(tag_list, prob_row) if prob >= CONFIDENCE_THRESHOLD
-        ]
-        results.append((path, tags))
-    return results
-
-
-# === MAIN TAGGING LOOP ===
-print("\n🔍 Tagging images...")
-all_image_paths = get_image_paths(ORGANIZED_DIR)
-all_new_tags = set(sfw_tags)
-log_rows = []
-
-for i in tqdm(range(0, len(all_image_paths), BATCH_SIZE), desc="Processing"):
-    batch_paths = all_image_paths[i : i + BATCH_SIZE]
-    try:
-        batch_results = tag_images(batch_paths, sfw_tags)
-        for path, tags in batch_results:
-            new_tags = set(tags) - set(sfw_tags)
-            if new_tags:
-                print(f"➕ New tags from {os.path.basename(path)}: {new_tags}")
-                all_new_tags.update(new_tags)
-            log_rows.append([path] + tags)
-    except Exception as e:
-        print(
-            f"❌ Error processing batch starting with {os.path.basename(batch_paths[0])}: {e}"
+# === Batching Tagging Function ===
+def batch_tag_images(filepaths, tag_list, batch_size, device):
+    tags_per_file = []
+    all_new_tags = set(tag_list)
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    for i in range(0, len(filepaths), batch_size):
+        batch_files = filepaths[i : i + batch_size]
+        images = [Image.open(f).convert("RGB") for f in batch_files]
+        inputs = processor(
+            text=tag_list, images=images, return_tensors="pt", padding=True
         )
+        inputs = {
+            k: v.to(device) if torch.is_tensor(v) else v for k, v in inputs.items()
+        }
+        outputs = model(**inputs)
+        probs = outputs.logits_per_image.softmax(dim=1).cpu().numpy()
+        for idx, probs_per_img in enumerate(probs):
+            tags = [
+                tag
+                for tag, prob in zip(tag_list, probs_per_img)
+                if prob >= CONFIDENCE_THRESHOLD
+            ]
+            tags_per_file.append((batch_files[idx], tags))
+            all_new_tags.update(tags)
+    return tags_per_file, all_new_tags
 
-# === SAVE UPDATED TAG LIST ===
-os.makedirs(os.path.dirname(SFW_TAG_FILE), exist_ok=True)
-with open(SFW_TAG_FILE, "w", encoding="utf-8") as f:
-    json.dump(sorted(all_new_tags), f, indent=2)
 
-# === SAVE TAG LOG ===
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
-    writer = csv.writer(f, delimiter="\t")
-    writer.writerow(["FilePath", "Tags..."])
-    writer.writerows(log_rows)
+if __name__ == "__main__":
+    # Ignore sys.argv[1] here — we're always tagging images in Organized/
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    batch_size = 48 if device == "cuda" else 6
 
-print("\n✅ Done tagging all images.")
-print(f"📄 Tag log: {LOG_FILE}")
-print(f"🧠 SFW tag list updated: {SFW_TAG_FILE}")
+    print(
+        f"🔍 Tagging images in: {ORGANIZED_DIR} (Batch size: {batch_size}, Device: {device})"
+    )
+    img_files = gather_image_files(ORGANIZED_DIR)
+    print(f"🖼️ Found {len(img_files)} images to tag.")
+
+    tags_per_file, all_new_tags = batch_tag_images(
+        img_files, sfw_tags, batch_size, device
+    )
+
+    # === SAVE UPDATED TAG FILE ===
+    os.makedirs(os.path.dirname(SFW_TAG_FILE), exist_ok=True)
+    with open(SFW_TAG_FILE, "w", encoding="utf-8") as f:
+        json.dump(sorted(all_new_tags), f, indent=2)
+
+    # === SAVE LOG FILE ===
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, delimiter="\t")
+        writer.writerow(["FilePath", "Tags..."])
+        for file, tags in tags_per_file:
+            writer.writerow([file] + tags)
+
+    print(f"\n✅ Done. Tagged {len(tags_per_file)} images.")
+    print(f"📄 Tag log: {LOG_FILE}")
+    print(f"🧠 SFW tag list updated: {SFW_TAG_FILE}")
