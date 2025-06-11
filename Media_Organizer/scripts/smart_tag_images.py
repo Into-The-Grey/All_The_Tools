@@ -46,7 +46,17 @@ def batch_tag_images(filepaths, tag_list, batch_size, device):
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     for i in range(0, len(filepaths), batch_size):
         batch_files = filepaths[i : i + batch_size]
-        images = [Image.open(f).convert("RGB") for f in batch_files]
+        images = []
+        valid_files = []
+        for f in batch_files:
+            try:
+                img = Image.open(f).convert("RGB")
+                images.append(img)
+                valid_files.append(f)
+            except Exception as e:
+                print(f"⚠️ Skipping unreadable image: {f} ({e})")
+        if not images:
+            continue
         inputs = processor(
             text=tag_list, images=images, return_tensors="pt", padding=True
         )
@@ -61,7 +71,7 @@ def batch_tag_images(filepaths, tag_list, batch_size, device):
                 for tag, prob in zip(tag_list, probs_per_img)
                 if prob >= CONFIDENCE_THRESHOLD
             ]
-            tags_per_file.append((batch_files[idx], tags))
+            tags_per_file.append((valid_files[idx], tags))
             all_new_tags.update(tags)
     return tags_per_file, all_new_tags
 
