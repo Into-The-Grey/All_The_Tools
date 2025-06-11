@@ -75,32 +75,32 @@ Media_Organizer/
 
 1. **Tag Initialization**
 
-   * Creates and de-dupes basic tag vocabularies in `/config/`
+   - Creates and de-dupes basic tag vocabularies in `/config/`
 
 2. **Duplicate Detection & Cleanup**
 
-   * Detects identical files
-   * Logs & moves extras to `Duplicates/`
+   - Detects identical files
+   - Logs & moves extras to `Duplicates/`
 
 3. **Chronological Sorting**
 
-   * Extracts EXIF/metadata or fallback timestamps
-   * Moves files into `/Organized/YYYY/MM/DD/`
+   - Extracts EXIF/metadata or fallback timestamps
+   - Moves files into `/Organized/YYYY/MM/DD/`
 
 4. **NSFW Classification**
 
-   * Detects unsafe media
-   * Moves flagged files to `Tagged/NSFW`
+   - Detects unsafe media
+   - Moves flagged files to `Tagged/NSFW`
 
 5. **Smart Tagging (CLIP)**
 
-   * Labels remaining media using vision-language AI
-   * Updates `/config/tags_sfw.json`
-   * Logs results to `media_tags.tsv`
+   - Labels remaining media using vision-language AI
+   - Updates `/config/tags_sfw.json`
+   - Logs results to `media_tags.tsv`
 
 6. **Unified Index Build**
 
-   * Aggregates all processed info into `media_index.jsonl`
+   - Aggregates all processed info into `media_index.jsonl`
 
 ---
 
@@ -156,18 +156,18 @@ No internet calls are made during processing. Models run locally. Your data stay
 
 ## 🧠 Credits
 
-* OpenAI CLIP via Hugging Face
-* NudeNet NSFW classifier
-* `pymediainfo` for video metadata
-* Pillow for image handling
+- OpenAI CLIP via Hugging Face
+- NudeNet NSFW classifier
+- `pymediainfo` for video metadata
+- Pillow for image handling
 
 ---
 
 ## 🧰 Future Ideas
 
-* Optional semantic tagging for NSFW content
-* Face detection or scene clustering
-* Tag-based search frontend or CLI query tool
+- Optional semantic tagging for NSFW content
+- Face detection or scene clustering
+- Tag-based search frontend or CLI query tool
 
 ---
 
