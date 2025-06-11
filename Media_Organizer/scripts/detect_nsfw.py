@@ -1,15 +1,23 @@
 import os
+import sys
 import shutil
 import csv
-from nudenet import NudeClassifier # type: ignore
+
+try:
+    from nudenet import NudeClassifier
+except ImportError:
+    print(
+        "❌ NudeNet not installed or import failed. Please check your venv and pip install nudenet."
+    )
+    sys.exit(1)
 
 
-def classify_and_tag(media_dir):
+def classify_and_tag(input_media_dir, base_dir):
     print("🔎 Initializing NSFW classifier (this may take a sec)...")
     classifier = NudeClassifier()
 
-    tagged_dir = os.path.join(media_dir, "Tagged", "NSFW")
-    logs_dir = os.path.join(media_dir, "logs")
+    tagged_dir = os.path.join(base_dir, "Tagged", "NSFW")
+    logs_dir = os.path.join(base_dir, "logs")
     os.makedirs(tagged_dir, exist_ok=True)
     os.makedirs(logs_dir, exist_ok=True)
 
@@ -20,20 +28,7 @@ def classify_and_tag(media_dir):
         writer = csv.writer(logfile)
         writer.writerow(["File", "Classification", "UnsafeScore", "NewLocation"])
 
-        for root, _, files in os.walk(media_dir):
-            if any(
-                skip in root
-                for skip in [
-                    "Tagged",
-                    "Duplicates",
-                    "logs",
-                    "config",
-                    "venv",
-                    "scripts",
-                ]
-            ):
-                continue
-
+        for root, _, files in os.walk(os.path.join(base_dir, "Organized")):
             for file in files:
                 path = os.path.join(root, file)
                 if not os.path.isfile(path):
@@ -70,13 +65,11 @@ def classify_and_tag(media_dir):
 
 
 if __name__ == "__main__":
-    print("🔞 NSFW Detector")
-    base_path = input(
-        "📁 Enter the absolute path to your organized media directory: "
-    ).strip()
+    if len(sys.argv) < 2:
+        print("Usage: python detect_nsfw.py <input_media_directory>")
+        sys.exit(1)
 
-    if not os.path.isdir(base_path):
-        print(f"[ERROR] '{base_path}' is not a valid directory.")
-        exit(1)
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    input_media_dir = sys.argv[1]
 
-    classify_and_tag(base_path)
+    classify_and_tag(input_media_dir, base_path)
