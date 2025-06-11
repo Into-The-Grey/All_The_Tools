@@ -1,0 +1,32 @@
+name: Media Organizer Release
+
+on:
+  push:
+    tags:
+      - 'media-organizer-v*'
+
+jobs:
+  release:
+    name: Package and Release Media Organizer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Zip Media_Organizer folder
+        run: |
+          cd Media_Organizer
+          zip -r ../Media_Organizer.zip . -x '*.git*'
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: Media_Organizer.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
