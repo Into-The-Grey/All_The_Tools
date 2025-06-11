@@ -1,4 +1,5 @@
 import os
+import sys
 import hashlib
 import shutil
 import csv
@@ -43,20 +44,19 @@ def safe_move(src_path, dest_dir, group_id):
 
 
 if __name__ == "__main__":
-    print("📦 Duplicate File Mover & Logger")
-    base_path = input("📁 Enter the absolute path to your media directory: ").strip()
+    if len(sys.argv) < 2:
+        print("Usage: python move_duplicates.py <input_media_directory>")
+        sys.exit(1)
 
-    if not os.path.isdir(base_path):
-        print(f"[ERROR] '{base_path}' is not a valid directory.")
-        exit(1)
-
+    input_path = sys.argv[1]
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     duplicates_folder = os.path.join(base_path, "Duplicates")
     logs_folder = os.path.join(base_path, "logs")
     os.makedirs(duplicates_folder, exist_ok=True)
     os.makedirs(logs_folder, exist_ok=True)
 
     print("\n⏳ Scanning for duplicates...")
-    dupes = find_duplicate_files(base_path)
+    dupes = find_duplicate_files(input_path)
 
     log_path = os.path.join(logs_folder, "duplicate_log.csv")
     with open(log_path, "w", newline="", encoding="utf-8") as csvfile:
