@@ -3,3 +3,6 @@ torch
 Pillow
 pymediainfo
 nudenet
+opencv-python
+tqdm
+colorama

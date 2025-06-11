@@ -8,31 +8,29 @@ Clean up your messy image/video archive with a fully self-contained Python toolc
 
 ## 🚀 Features
 
-* 📦 **Exact Duplicate Detection**
+- 📦 **Exact Duplicate Detection**
+  - MD5-based scanning to isolate true file-level duplicates
 
-  * MD5-based scanning to isolate true file-level duplicates
+- 🧹 **Duplicate Management**
+  - Retains one original; logs and moves all dupes to a `Duplicates/` folder
 
-* 🧹 **Duplicate Management**
+- 🗂️ **Date-Based Folder Organization**
+  - Sorts media into `Organized/YYYY/MM/DD` using capture or modification date
 
-  * Retains one original; logs and moves all dupes to a `Duplicates/` folder
+- 🔞 **NSFW Detection (Offline)**
+  - Detects unsafe content using [NudeNet](https://github.com/notAI-tech/NudeNet)
+  - Moves NSFW files to `Tagged/NSFW`
 
-* 🗂️ **Date-Based Folder Organization**
+- 🧠 **Smart AI Tagging**
+  - Uses OpenAI CLIP via Hugging Face to label both images and videos
+  - Tag list auto-grows; you can manually edit or extend tag vocabularies
+  - Automatically adapts to your hardware (uses GPU if available)
 
-  * Sorts media into `Organized/YYYY/MM/DD` using capture or modification date
+- 🧮 **Unified Search Index**
+  - Combines image/video tags + NSFW classification + timestamps into `media_index.jsonl`
 
-* 🔞 **NSFW Detection (Offline)**
-
-  * Detects unsafe content using [NudeNet](https://github.com/notAI-tech/NudeNet)
-  * Moves NSFW files to `Tagged/NSFW`
-
-* 🧠 **Smart AI Tagging**
-
-  * Uses OpenAI CLIP via Hugging Face to label SFW media
-  * Tag list auto-grows; you can manually edit or extend tag vocabularies
-
-* 📄 **Search-Ready Indexing**
-
-  * Outputs `media_index.jsonl` with path, tags, safety classification, and capture date
+- 🧑‍💻 **Colorful Main Runner**
+  - `main.py` gives color-coded, timed status with retry-on-failure built in
 
 ---
 
@@ -52,6 +50,7 @@ Media_Organizer/
 │   ├── duplicate_log.csv
 │   ├── nsfw_log.csv
 │   ├── media_tags.tsv
+│   ├── video_tags.tsv
 │   └── media_index.jsonl
 │
 ├── scripts/             # Modular processing logic
@@ -61,7 +60,8 @@ Media_Organizer/
 │   ├── organize_by_date.py
 │   ├── detect_nsfw.py
 │   ├── smart_tag_images.py
-│   └── build_media_index.py
+│   ├── smart_tag_videos.py
+│   └── merge_tag_logs.py
 │
 ├── Organized/           # Output: clean, date-organized library
 ├── Duplicates/          # Output: confirmed redundant files
@@ -71,7 +71,7 @@ Media_Organizer/
 
 ---
 
-## 🧠 How It Works (Flow Overview)
+## 🧠 Processing Flow
 
 1. **Tag Initialization**
 
@@ -114,13 +114,14 @@ Media_Organizer/
 python main.py
 ```
 
-* Automatically sets up a virtual environment
-* Installs all dependencies
-* Runs every step in sequence
+- Automatically sets up a virtual environment
+- Installs all dependencies
+- Runs every step in sequence
+- Color-coded output, time tracking, and graceful retry on failure
 
 ---
 
-## 🧩 Requirements
+## 📦 Requirements
 
 All dependencies are listed in `requirements.txt`:
 
@@ -130,17 +131,20 @@ torch
 Pillow
 pymediainfo
 nudenet
+opencv-python
+tqdm
+colorama
 ```
 
-Additional system requirement: [ffmpeg](https://ffmpeg.org/) for some video metadata.
+Optional but recommended: [FFmpeg](https://ffmpeg.org/) for better video metadata support.
 
 ---
 
 ## ✏️ Customization
 
-* Add your own categories in `tags_sfw.json` or `tags_nsfw.json`
-* Edit the `confidence threshold` in `smart_tag_images.py`
-* Modify any script in `/scripts/` — each is modular and standalone
+- Add your own categories in `tags_sfw.json` or `tags_nsfw.json`
+- Tweak `CONFIDENCE_THRESHOLD`, `BATCH_SIZE`, or `FRAME_INTERVAL` in the relevant scripts
+- Scripts are modular — you can run them individually or as part of `main.py`
 
 ---
 
