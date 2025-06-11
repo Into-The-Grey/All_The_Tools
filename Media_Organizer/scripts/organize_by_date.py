@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 from datetime import datetime
 from PIL import Image, ExifTags
@@ -8,7 +9,7 @@ from pymediainfo import MediaInfo
 def get_image_date(path):
     try:
         img = Image.open(path)
-        exif = img._getexif() # type: ignore
+        exif = img.getexif()
         if exif:
             for tag, value in exif.items():
                 name = ExifTags.TAGS.get(tag)
@@ -22,19 +23,16 @@ def get_image_date(path):
 def get_video_date(path):
     try:
         info = MediaInfo.parse(path)
-        # Ensure info is a MediaInfo object and has tracks
-        if not hasattr(info, "tracks"):
-            return None
-        for track in info.tracks: # type: ignore
-            if getattr(track, "track_type", None) == "General":
-                for key in ["recorded_date", "encoded_date", "tagged_date"]:
-                    value = getattr(track, key, None)
-                    if value:
-                        try:
-                            # Try to parse ISO or fallback to date only
-                            return datetime.fromisoformat(value.split("T")[0])
-                        except Exception:
-                            continue
+        if info and not isinstance(info, str) and hasattr(info, 'tracks'):
+            for track in info.tracks:
+                if track.track_type == "General":
+                    for key in ["recorded_date", "encoded_date", "tagged_date"]:
+                        value = getattr(track, key, None)
+                        if value:
+                            try:
+                                return datetime.fromisoformat(value.split("T")[0])
+                            except Exception:
+                                continue
     except Exception:
         pass
     return None
@@ -61,13 +59,12 @@ def get_media_date(path):
 
 
 if __name__ == "__main__":
-    print("🗂️ Media Organizer")
-    base_path = input("📁 Enter the absolute path to your media directory: ").strip()
+    if len(sys.argv) < 2:
+        print("Usage: python organize_by_date.py <input_media_directory>")
+        sys.exit(1)
 
-    if not os.path.isdir(base_path):
-        print(f"[ERROR] '{base_path}' is not a valid directory.")
-        exit(1)
-
+    input_path = sys.argv[1]
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     organized_dir = os.path.join(base_path, "Organized")
     os.makedirs(organized_dir, exist_ok=True)
 
@@ -75,20 +72,7 @@ if __name__ == "__main__":
     moved = 0
     skipped = 0
 
-    for root, _, files in os.walk(base_path):
-        if any(
-            skip in root
-            for skip in [
-                "Organized",
-                "Duplicates",
-                "Tagged",
-                "logs",
-                "config",
-                "venv",
-                "scripts",
-            ]
-        ):
-            continue
+    for root, _, files in os.walk(input_path):
         for filename in files:
             path = os.path.join(root, filename)
             date = get_media_date(path)
