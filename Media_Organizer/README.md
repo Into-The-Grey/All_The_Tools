@@ -34,6 +34,18 @@ Clean up your messy image/video archive with a fully self-contained Python toolc
 
 ---
 
+## 🚧 Known Limitation (as of 2025)
+
+**NSFW detection is temporarily disabled in this toolchain.**
+
+- The `detect_nsfw.py` script depends on the [NudeNet](https://github.com/notAI-tech/NudeNet) library.
+- NudeNet is currently *not compatible with Python 3.13.x* (latest version as of mid-2025).
+- If/when NudeNet is updated for 3.13+, you can uncomment its step in `main.py` and restore NSFW detection.
+- If you need this now, use Python 3.10–3.12 and manually run the script.
+
+---
+
+
 ## 📁 Folder Structure
 
 ```bash
