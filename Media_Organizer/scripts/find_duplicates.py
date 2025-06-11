@@ -1,4 +1,5 @@
 import os
+import sys
 import hashlib
 from collections import defaultdict
 
@@ -25,22 +26,20 @@ def find_duplicate_files(base_dir):
             file_hash = compute_md5(file_path)
             if file_hash:
                 hash_map[file_hash].append(file_path)
-
-    # Filter to only keep groups with more than one file (duplicates)
     duplicates = {h: paths for h, paths in hash_map.items() if len(paths) > 1}
     return duplicates
 
 
 if __name__ == "__main__":
-    print("🔍 Media Duplicate Finder")
-    base_path = input("📁 Enter the absolute path to your media directory: ").strip()
+    if len(sys.argv) < 2:
+        print("Usage: python find_duplicates.py <input_media_directory>")
+        sys.exit(1)
 
-    if not os.path.isdir(base_path):
-        print(f"[ERROR] '{base_path}' is not a valid directory.")
-        exit(1)
+    input_path = sys.argv[1]
+    print("🔍 Media Duplicate Finder")
 
     print("\n⏳ Scanning for duplicates... Please wait.\n")
-    dupes = find_duplicate_files(base_path)
+    dupes = find_duplicate_files(input_path)
 
     print(f"\n✅ Found {len(dupes)} sets of exact duplicates.\n")
     for idx, (file_hash, files) in enumerate(dupes.items(), 1):
