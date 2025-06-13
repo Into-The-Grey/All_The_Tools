@@ -1,6 +1,6 @@
 # Media Organizer
 
-![Media Organizer Logo](https://example.com/logo.png) <!-- Replace with actual logo URL -->
+![Media Organizer Logo](assets/media_organizer_logo.png)
 
 ## Table of Contents
 
@@ -90,6 +90,7 @@ No cloud. No vendor lock-in. Just pure Python, with serious power and polish.
 Media_Organizer/
 ├── main.py
 ├── requirements.txt
+├── nsfw_env.yml
 ├── README.md
 │
 ├── config/
@@ -131,7 +132,8 @@ Media_Organizer/
 python main.py
 ```
 
-- Auto-creates a `venv/` and installs everything.
+- Auto-creates a `venv/` and installs everything for the main pipeline.
+- When needed, auto-installs Miniconda and creates a special conda env for NSFW detection (`nsfw_env.yml`).
 - Guides you with prompts and color logs.
 - Progress bars show both step-level and pipeline-wide progress.
 - DRY RUN mode available on all scripts for no-risk testing.
@@ -140,21 +142,33 @@ python main.py
 
 ## 📦 Requirements
 
-All dependencies are in `requirements.txt`:
+- **requirements.txt** (core pipeline):
 
-```text
-torch
-transformers
-tqdm
-colorama
-Pillow
-opencv-python
-pymediainfo
-nudenet         # Only used on Python ≤3.12
-nsfw-detector   # Used as fallback (3.11+ safe)
-tensorflow-cpu  # Used by nsfw-detector
-pyyaml          # For optional YAML configs
-```
+  ```text
+  torch
+  transformers
+  tqdm
+  colorama
+  Pillow
+  opencv-python
+  pymediainfo
+  pyyaml
+  ```
+
+- **nsfw\_env.yml** (for the NSFW conda environment):
+
+  ```yaml
+  name: mediaorg_py312
+  channels:
+    - defaults
+  dependencies:
+    - python=3.12
+    - tensorflow
+    - nsfw-detector
+    - pillow
+    - tqdm
+    - colorama
+  ```
 
 *Optional: [FFmpeg](https://ffmpeg.org/) in your PATH is highly recommended for best video support.*
 
@@ -174,7 +188,7 @@ pyyaml          # For optional YAML configs
 - **NSFW detection “skipped”?**
 
   - You may be on Python 3.13+ with no working backend.
-  - Try `pip install nsfw-detector tensorflow-cpu` and re-run, or use Python 3.12 for NudeNet.
+  - The pipeline will auto-create and use a conda env if possible, but if no backend is available, NSFW is skipped with a warning.
 - **CUDA not used?**
 
   - Make sure you have [CUDA installed](https://developer.nvidia.com/cuda-downloads) and `torch` built for your GPU.

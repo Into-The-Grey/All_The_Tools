@@ -1,0 +1,10 @@
+name: mediaorg_py312
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - tensorflow
+  - nsfw-detector
+  - pillow
+  - tqdm
+  - colorama
