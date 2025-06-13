@@ -1,71 +1,110 @@
 # Media Organizer
 
+![Media Organizer Logo](https://example.com/logo.png) <!-- Replace with actual logo URL -->
+
+## Table of Contents
+
+- [Media Organizer](#media-organizer)
+  - [Table of Contents](#table-of-contents)
+  - [Automated, Offline Media Deduplication, Tagging, and Organization System](#automated-offline-media-deduplication-tagging-and-organization-system)
+  - [🚀 Features](#-features)
+  - [🧠 How It Works](#-how-it-works)
+  - [📁 Folder Structure](#-folder-structure)
+  - [⚙️ Usage](#️-usage)
+  - [📦 Requirements](#-requirements)
+  - [✏️ Customization \& Power Tips](#️-customization--power-tips)
+  - [🧰 Troubleshooting \& FAQ](#-troubleshooting--faq)
+  - [🛡️ Privacy](#️-privacy)
+  - [💡 Future Ideas](#-future-ideas)
+
 ## Automated, Offline Media Deduplication, Tagging, and Organization System
 
-Clean up your messy image/video archive with a fully self-contained Python toolchain. This project detects and separates duplicates, organizes media by date, identifies NSFW content, applies intelligent tags using AI, and produces a complete searchable index.
+Take back your archive: **detects, sorts, tags, and indexes your photos & videos — 100% locally, offline, and private.**
+No cloud. No vendor lock-in. Just pure Python, with serious power and polish.
 
 ---
 
 ## 🚀 Features
 
-- 📦 **Exact Duplicate Detection**
-  - MD5-based scanning to isolate true file-level duplicates
+- **Exact Duplicate Detection**
+  MD5-based scan for byte-for-byte duplicates (even across folders)
 
-- 🧹 **Duplicate Management**
-  - Retains one original; logs and moves all dupes to a `Duplicates/` folder
+- **Smart Duplicate Management**
+  One file kept; the rest are safely logged and moved to `/Duplicates/`
 
-- 🗂️ **Date-Based Folder Organization**
-  - Sorts media into `Organized/YYYY/MM/DD` using capture or modification date
+- **Date-Based Media Sorting**
+  Automatically organizes your media into `/Organized/YYYY/MM/DD/`
+  (Uses true capture date if available, not just modification time!)
 
-- 🔞 **NSFW Detection (Offline)**
-  - Detects unsafe content using [NudeNet](https://github.com/notAI-tech/NudeNet)
-  - Moves NSFW files to `Tagged/NSFW`
+- **Offline NSFW Detection (Auto-Backend!)**
+  *Works with either [NudeNet](https://github.com/notAI-tech/NudeNet) or [nsfw-detector](https://github.com/GantMan/nsfw_model)*
 
-- 🧠 **Smart AI Tagging**
-  - Uses OpenAI CLIP via Hugging Face to label both images and videos
-  - Tag list auto-grows; you can manually edit or extend tag vocabularies
-  - Automatically adapts to your hardware (uses GPU if available)
+  - Python 3.8–3.12: Uses NudeNet
+  - Python 3.11–3.13+: Uses nsfw-detector
+  - If both unavailable, step is skipped with a warning
+  - All flagged files logged and available for review/search
 
-- 🧮 **Unified Search Index**
-  - Combines image/video tags + NSFW classification + timestamps into `media_index.jsonl`
+- **AI-Powered Image & Video Tagging**
 
-- 🧑‍💻 **Colorful Main Runner**
-  - `main.py` gives color-coded, timed status with retry-on-failure built in
+  - Uses OpenAI CLIP (Hugging Face)
+  - Adapts batch size and speed to your hardware (CUDA, CPU, RAM)
+  - Auto-updates your tag vocabularies; manual editing supported
 
----
+- **Unified Searchable Index**
+  Combines tags, NSFW status, capture time, and more in `media_index.jsonl` for easy auditing or scripting
 
-## 🚧 Known Limitation (as of 2025)
+- **Colorful, User-Friendly Pipeline**
 
-**NSFW detection is temporarily disabled in this toolchain.**
-
-- The `detect_nsfw.py` script depends on the [NudeNet](https://github.com/notAI-tech/NudeNet) library.
-- NudeNet is currently *not compatible with Python 3.13.x* (latest version as of mid-2025).
-- If/when NudeNet is updated for 3.13+, you can uncomment its step in `main.py` and restore NSFW detection.
-- If you need this now, use Python 3.10–3.12 and manually run the script.
+  - Pipeline-level progress bar + step-by-step color logs
+  - Time tracking and graceful auto-retry
+  - DRY RUN support for safe experimentation
 
 ---
 
+## 🧠 How It Works
+
+1. **Initialize Tag Files:**
+   Creates/reuses `/config/tags_sfw.json` & `/config/tags_nsfw.json`.
+
+2. **Find and Log Duplicates:**
+   MD5-hashes all media, finds perfect matches, moves extra copies to `/Duplicates/`.
+
+3. **Organize by Date:**
+   Reads EXIF/video metadata; sorts everything into `/Organized/YYYY/MM/DD/`.
+
+4. **NSFW Detection:**
+   Runs NudeNet or nsfw-detector (auto-detects and uses best backend).
+   Logs and (optionally) moves unsafe files.
+
+5. **AI Smart Tagging:**
+   Images and video frames are labeled using CLIP; new tags added to vocabularies.
+
+6. **Unified Index:**
+   All metadata, tags, and NSFW results are merged into a fast-searchable `.jsonl` file.
+
+---
 
 ## 📁 Folder Structure
 
 ```bash
 Media_Organizer/
-├── main.py              # Master automation runner
-├── requirements.txt     # All needed dependencies
-├── README.md            # You're reading this
+├── main.py
+├── requirements.txt
+├── README.md
 │
-├── config/              # Controlled vocabularies (editable)
+├── config/
 │   ├── tags_sfw.json
 │   └── tags_nsfw.json
 │
-├── logs/                # Output logs and index
-│   ├── duplicate_log.csv
-│   ├── nsfw_log.csv
-│   ├── media_tags.tsv
-│   ├── video_tags.tsv
-│   └── media_index.jsonl
+├── logs/
+│   ├── duplicate_log_*.csv
+│   ├── nsfw_log_*.csv
+│   ├── media_tags_*.tsv
+│   ├── video_tags_*.tsv
+│   ├── media_index_*.jsonl
+│   └── *_errors_*.log
 │
-├── scripts/             # Modular processing logic
+├── scripts/
 │   ├── init_tag_files.py
 │   ├── find_duplicates.py
 │   ├── move_duplicates.py
@@ -75,114 +114,99 @@ Media_Organizer/
 │   ├── smart_tag_videos.py
 │   └── merge_tag_logs.py
 │
-├── Organized/           # Output: clean, date-organized library
-├── Duplicates/          # Output: confirmed redundant files
-├── Tagged/NSFW/         # Output: flagged unsafe content
-└── venv/                # Local Python environment (auto-created)
+├── Organized/
+├── Duplicates/
+├── Tagged/NSFW/
+└── venv/
 ```
-
----
-
-## 🧠 Processing Flow
-
-1. **Tag Initialization**
-
-   - Creates and de-dupes basic tag vocabularies in `/config/`
-
-2. **Duplicate Detection & Cleanup**
-
-   - Detects identical files
-   - Logs & moves extras to `Duplicates/`
-
-3. **Chronological Sorting**
-
-   - Extracts EXIF/metadata or fallback timestamps
-   - Moves files into `/Organized/YYYY/MM/DD/`
-
-4. **NSFW Classification**
-
-   - Detects unsafe media
-   - Moves flagged files to `Tagged/NSFW`
-
-5. **Smart Tagging (CLIP)**
-
-   - Labels remaining media using vision-language AI
-   - Updates `/config/tags_sfw.json`
-   - Logs results to `media_tags.tsv`
-
-6. **Unified Index Build**
-
-   - Aggregates all processed info into `media_index.jsonl`
 
 ---
 
 ## ⚙️ Usage
 
-### 1. Install Python 3.8+
-
-### 2. From inside the project folder
+1. **Install Python 3.8–3.13** (Windows/Linux/MacOS)
+2. **From inside your project folder:**
 
 ```bash
 python main.py
 ```
 
-- Automatically sets up a virtual environment
-- Installs all dependencies
-- Runs every step in sequence
-- Color-coded output, time tracking, and graceful retry on failure
+- Auto-creates a `venv/` and installs everything.
+- Guides you with prompts and color logs.
+- Progress bars show both step-level and pipeline-wide progress.
+- DRY RUN mode available on all scripts for no-risk testing.
 
 ---
 
 ## 📦 Requirements
 
-All dependencies are listed in `requirements.txt`:
+All dependencies are in `requirements.txt`:
 
-```requirements.txt
-transformers
+```text
 torch
-Pillow
-pymediainfo
-nudenet
-opencv-python
+transformers
 tqdm
 colorama
+Pillow
+opencv-python
+pymediainfo
+nudenet         # Only used on Python ≤3.12
+nsfw-detector   # Used as fallback (3.11+ safe)
+tensorflow-cpu  # Used by nsfw-detector
+pyyaml          # For optional YAML configs
 ```
 
-Optional but recommended: [FFmpeg](https://ffmpeg.org/) for better video metadata support.
+*Optional: [FFmpeg](https://ffmpeg.org/) in your PATH is highly recommended for best video support.*
 
 ---
 
-## ✏️ Customization
+## ✏️ Customization & Power Tips
 
-- Add your own categories in `tags_sfw.json` or `tags_nsfw.json`
-- Tweak `CONFIDENCE_THRESHOLD`, `BATCH_SIZE`, or `FRAME_INTERVAL` in the relevant scripts
-- Scripts are modular — you can run them individually or as part of `main.py`
-
----
-
-## 🛡️ Offline & Private
-
-No internet calls are made during processing. Models run locally. Your data stays with you.
+- **Edit `/config/tags_sfw.json` and `/config/tags_nsfw.json`** to tailor your tagging
+- **Adjust thresholds** (`confidence_threshold`, `batch_size`, etc.) in `config.json` for performance tuning
+- **Resume and checkpoints**: all steps support `--resume` after interruption
+- **Error logs** in `/logs/` show everything that couldn’t be processed, for easy troubleshooting
 
 ---
 
-## 🧠 Credits
+## 🧰 Troubleshooting & FAQ
 
-- OpenAI CLIP via Hugging Face
-- NudeNet NSFW classifier
-- `pymediainfo` for video metadata
-- Pillow for image handling
+- **NSFW detection “skipped”?**
+
+  - You may be on Python 3.13+ with no working backend.
+  - Try `pip install nsfw-detector tensorflow-cpu` and re-run, or use Python 3.12 for NudeNet.
+- **CUDA not used?**
+
+  - Make sure you have [CUDA installed](https://developer.nvidia.com/cuda-downloads) and `torch` built for your GPU.
+- **Script failed mid-pipeline?**
+
+  - Just rerun `main.py` and use `--resume` on failed steps.
+  - Check `/logs/*_errors_*.log` for details.
 
 ---
 
-## 🧰 Future Ideas
+## 🛡️ Privacy
 
-- Optional semantic tagging for NSFW content
-- Face detection or scene clustering
-- Tag-based search frontend or CLI query tool
+- **No internet required after setup**
+- **All AI runs locally**
+- **No data leaves your computer**
 
 ---
 
-**Built to give you back control over your chaotic archive.**
+## 💡 Future Ideas
 
-🖼️📽️📂💡
+- Tag-based CLI search and filtering tools
+- Scene/face clustering
+- File integrity repair and partial recovery
+- Super-fast parallel processing for giant archives
+
+---
+
+**Built for power-users, by power-users.**
+🖼️📽️🧠🔍 Control your data, don’t let your data control you.
+
+---
+
+**Ready to run? `python main.py` and watch the chaos become order.**
+
+---
