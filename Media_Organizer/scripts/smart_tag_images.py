@@ -14,7 +14,6 @@ LOG_FILE = os.path.join(BASE_PATH, "logs", "media_tags.tsv")
 CONFIDENCE_THRESHOLD = 0.3
 
 
-# === LOAD/CREATE TAG FILE ===
 def load_or_init_tags(path, default=[]):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -28,7 +27,6 @@ def load_or_init_tags(path, default=[]):
 sfw_tags = load_or_init_tags(SFW_TAG_FILE)
 
 
-# === Batch gather all image file paths in Organized ===
 def gather_image_files(organized_dir):
     img_files = []
     for root, _, files in os.walk(organized_dir):
@@ -38,7 +36,6 @@ def gather_image_files(organized_dir):
     return img_files
 
 
-# === Batching Tagging Function ===
 def batch_tag_images(filepaths, tag_list, batch_size, device):
     tags_per_file = []
     all_new_tags = set(tag_list)
@@ -64,7 +61,7 @@ def batch_tag_images(filepaths, tag_list, batch_size, device):
             k: v.to(device) if torch.is_tensor(v) else v for k, v in inputs.items()
         }
         outputs = model(**inputs)
-        probs = outputs.logits_per_image.softmax(dim=1).cpu().numpy()
+        probs = outputs.logits_per_image.softmax(dim=1).detach().cpu().numpy()
         for idx, probs_per_img in enumerate(probs):
             tags = [
                 tag
@@ -77,7 +74,6 @@ def batch_tag_images(filepaths, tag_list, batch_size, device):
 
 
 if __name__ == "__main__":
-    # Ignore sys.argv[1] here — we're always tagging images in Organized/
     device = "cuda" if torch.cuda.is_available() else "cpu"
     batch_size = 48 if device == "cuda" else 6
 
@@ -91,12 +87,10 @@ if __name__ == "__main__":
         img_files, sfw_tags, batch_size, device
     )
 
-    # === SAVE UPDATED TAG FILE ===
     os.makedirs(os.path.dirname(SFW_TAG_FILE), exist_ok=True)
     with open(SFW_TAG_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(all_new_tags), f, indent=2)
 
-    # === SAVE LOG FILE ===
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f, delimiter="\t")

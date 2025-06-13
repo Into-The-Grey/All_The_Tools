@@ -7,13 +7,12 @@ from PIL import Image
 from transformers import CLIPProcessor, CLIPModel # type: ignore
 import csv
 
-# === CONFIG ===
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORGANIZED_DIR = os.path.join(BASE_PATH, "Organized")
 SFW_TAG_FILE = os.path.join(BASE_PATH, "config", "tags_sfw.json")
 LOG_FILE = os.path.join(BASE_PATH, "logs", "video_tags.tsv")
 CONFIDENCE_THRESHOLD = 0.3
-FRAME_INTERVAL = 1  # seconds between sampled frames
+FRAME_INTERVAL = 1  # seconds
 
 
 def load_or_init_tags(path, default=[]):
@@ -40,7 +39,6 @@ def gather_video_files(organized_dir):
 
 
 def sample_frames(video_path, interval_sec=1):
-    """Yield PIL Images sampled every interval_sec seconds from a video."""
     frames = []
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -65,6 +63,8 @@ def batch_tag_images(images, tag_list, batch_size, device, model, processor):
     tags_per_img = []
     for i in range(0, len(images), batch_size):
         batch_imgs = images[i : i + batch_size]
+        if not batch_imgs:
+            continue
         inputs = processor(
             text=tag_list, images=batch_imgs, return_tensors="pt", padding=True
         )
@@ -72,7 +72,7 @@ def batch_tag_images(images, tag_list, batch_size, device, model, processor):
             k: v.to(device) if torch.is_tensor(v) else v for k, v in inputs.items()
         }
         outputs = model(**inputs)
-        probs = outputs.logits_per_image.softmax(dim=1).cpu().numpy()
+        probs = outputs.logits_per_image.softmax(dim=1).detach().cpu().numpy()
         for probs_img in probs:
             tags = [
                 tag
@@ -106,15 +106,12 @@ if __name__ == "__main__":
         tags_per_frame = batch_tag_images(
             frames, sfw_tags, batch_size, device, model, processor
         )
-        # Aggregate: tag video if tag appears in >1 frame
         tag_counts = {}
         for taglist in tags_per_frame:
             for tag in taglist:
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1
         if tag_counts:
-            min_count = max(
-                1, int(len(frames) * 0.2)
-            )  # At least 20% of frames must have the tag
+            min_count = max(1, int(len(frames) * 0.2))
             final_tags = [
                 tag for tag, count in tag_counts.items() if count >= min_count
             ]
@@ -126,12 +123,10 @@ if __name__ == "__main__":
             f"✅ Tagged {os.path.basename(vfile)} with: {', '.join(final_tags) if final_tags else '(none)'}"
         )
 
-    # Save expanded tag set
     os.makedirs(os.path.dirname(SFW_TAG_FILE), exist_ok=True)
     with open(SFW_TAG_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(all_new_tags), f, indent=2)
 
-    # Save video tag log
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f, delimiter="\t")
