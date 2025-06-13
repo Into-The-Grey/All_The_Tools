@@ -1,78 +1,163 @@
 import os
 import sys
-import hashlib
+import json
 import shutil
-import csv
-from collections import defaultdict
+import argparse
+from tqdm import tqdm
+from datetime import datetime
+from colorama import Fore, Style, init
+
+init(autoreset=True)
+BANNER = f"""
+{Fore.GREEN}
+███    ███  ██████  ██    ██ ███████     ██████  ██    ██ ██████  ██    ██ 
+████  ████ ██    ██ ██    ██ ██          ██   ██ ██    ██ ██   ██  ██  ██  
+██ ████ ██ ██    ██ ██    ██ █████       ██████  ██    ██ ██   ██   ████   
+██  ██  ██ ██    ██ ██    ██ ██          ██   ██ ██    ██ ██   ██    ██    
+██      ██  ██████   ██████  ███████     ██   ██  ██████  ██████     ██    
+{Style.RESET_ALL}
+"""
+
+print(BANNER)
+print(
+    Fore.MAGENTA
+    + ">>> Move Duplicates & Log Everything (Flagship Mode) <<<"
+    + Style.RESET_ALL
+)
+
+# --- CONFIG ---
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+DUPLICATES_DIR = os.path.join(BASE_DIR, "Duplicates")
+os.makedirs(DUPLICATES_DIR, exist_ok=True)
+CHECKPOINT_FILE = os.path.join(LOGS_DIR, "move_duplicates_checkpoint.json")
 
 
-def compute_md5(file_path, chunk_size=8192):
-    hash_md5 = hashlib.md5()
-    try:
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(chunk_size), b""):
-                hash_md5.update(chunk)
-    except Exception as e:
-        print(f"[ERROR] Can't read file: {file_path} — {e}")
-        return None
-    return hash_md5.hexdigest()
-
-
-def find_duplicate_files(base_dir):
-    hash_map = defaultdict(list)
-    for root, _, files in os.walk(base_dir):
-        for name in files:
-            file_path = os.path.join(root, name)
-            file_hash = compute_md5(file_path)
-            if file_hash:
-                hash_map[file_hash].append(file_path)
-    return {h: paths for h, paths in hash_map.items() if len(paths) > 1}
-
-
-def safe_move(src_path, dest_dir, group_id):
-    filename = os.path.basename(src_path)
-    base, ext = os.path.splitext(filename)
-    dest_path = os.path.join(dest_dir, filename)
-
-    counter = 1
-    while os.path.exists(dest_path):
-        dest_path = os.path.join(dest_dir, f"{base}_dup{group_id}_{counter}{ext}")
-        counter += 1
-
-    shutil.move(src_path, dest_path)
-    return dest_path
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python move_duplicates.py <input_media_directory>")
+def find_latest_duplicate_log():
+    logs = [
+        f
+        for f in os.listdir(LOGS_DIR)
+        if f.startswith("duplicate_log_") and f.endswith(".csv")
+    ]
+    if not logs:
+        print(
+            Fore.RED
+            + "❌ No duplicate_log_*.csv found! Please run find_duplicates.py first."
+            + Style.RESET_ALL
+        )
         sys.exit(1)
+    logs.sort(reverse=True)
+    return os.path.join(LOGS_DIR, logs[0])
 
-    input_path = sys.argv[1]
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    duplicates_folder = os.path.join(base_path, "Duplicates")
-    logs_folder = os.path.join(base_path, "logs")
-    os.makedirs(duplicates_folder, exist_ok=True)
-    os.makedirs(logs_folder, exist_ok=True)
 
-    print("\n⏳ Scanning for duplicates...")
-    dupes = find_duplicate_files(input_path)
+# --- ARGS ---
+parser = argparse.ArgumentParser(
+    description="Move duplicates (production mode, with attitude)."
+)
+parser.add_argument("input_dir", help="Original media input directory")
+parser.add_argument(
+    "--dry-run", action="store_true", help="Preview all moves, make no changes"
+)
+parser.add_argument(
+    "--resume", action="store_true", help="Resume from last checkpoint if available"
+)
+args = parser.parse_args()
 
-    log_path = os.path.join(logs_folder, "duplicate_log.csv")
-    with open(log_path, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["GroupID", "Original", "Duplicate"])
+DUPLICATE_LOG = find_latest_duplicate_log()
+ERROR_LOG = os.path.join(
+    LOGS_DIR, f"move_duplicates_errors_{datetime.now():%Y%m%d_%H%M%S}.log"
+)
+MOVES_LOG = os.path.join(
+    LOGS_DIR, f"moved_duplicates_{datetime.now():%Y%m%d_%H%M%S}.csv"
+)
 
-        for group_id, (hash_val, paths) in enumerate(dupes.items(), 1):
-            original = paths[0]
-            print(f"\n[Group {group_id}] Keeping original:\n  {original}")
-            for dup in paths[1:]:
-                try:
-                    moved_path = safe_move(dup, duplicates_folder, group_id)
-                    print(f"  Moved duplicate -> {moved_path}")
-                    writer.writerow([group_id, original, dup])
-                except Exception as e:
-                    print(f"  [ERROR] Failed to move {dup}: {e}")
+# --- LOAD DUPLICATE GROUPS ---
+duplicate_groups = {}
+with open(DUPLICATE_LOG, "r", encoding="utf-8") as f:
+    next(f)  # Skip header
+    for line in f:
+        group_id, hashval, fpath = line.strip().split(",", 2)
+        duplicate_groups.setdefault(group_id, []).append(fpath)
 
-    print(f"\n✅ Done! Moved duplicates to: {duplicates_folder}")
-    print(f"📝 Log written to: {log_path}")
+# --- CHECKPOINT RESUME (structure for future) ---
+already_moved = set()
+if args.resume and os.path.exists(CHECKPOINT_FILE):
+    with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
+        checkpoint = json.load(f)
+    already_moved = set(checkpoint.get("moved_files", []))
+
+errors = []
+moves = []
+total_files = sum(
+    len(paths) - 1 for paths in duplicate_groups.values() if len(paths) > 1
+)
+progress = tqdm(
+    total=total_files, desc="🚚 Moving duplicates", unit="file", colour="green"
+)
+
+for group_id, files in duplicate_groups.items():
+    if len(files) < 2:
+        continue  # Only 1 file: skip
+    original = files[0]
+    for dup in files[1:]:
+        if dup in already_moved:
+            progress.update(1)
+            continue  # Already handled in resume mode
+        try:
+            if not os.path.exists(dup):
+                msg = f"{Fore.YELLOW}⚠️ Not found: {dup}{Style.RESET_ALL}"
+                print(msg)
+                errors.append((dup, "Not found"))
+                progress.update(1)
+                continue
+            dest = os.path.join(DUPLICATES_DIR, os.path.basename(dup))
+            dest_base, dest_ext = os.path.splitext(dest)
+            counter = 1
+            while os.path.exists(dest):
+                dest = f"{dest_base}_dup{counter}{dest_ext}"
+                counter += 1
+            if args.dry_run:
+                print(
+                    Fore.CYAN
+                    + f"[DRY RUN] Would move: {dup} → {dest}"
+                    + Style.RESET_ALL
+                )
+            else:
+                shutil.move(dup, dest)
+                print(
+                    Fore.YELLOW
+                    + f"🟢 Moved duplicate: {dup} → {dest}"
+                    + Style.RESET_ALL
+                )
+            moves.append((group_id, original, dup, dest))
+        except Exception as e:
+            print(Fore.RED + f"❌ Failed to move {dup}: {e}" + Style.RESET_ALL)
+            errors.append((dup, str(e)))
+        progress.update(1)
+progress.close()
+
+# --- LOG MOVES & ERRORS ---
+if not args.dry_run and moves:
+    with open(MOVES_LOG, "w", encoding="utf-8") as f:
+        f.write("GroupID,Original,Duplicate,NewLocation\n")
+        for group_id, original, dup, dest in moves:
+            f.write(f"{group_id},{original},{dup},{dest}\n")
+    print(Fore.GREEN + f"📝 Moves log saved to {MOVES_LOG}" + Style.RESET_ALL)
+
+if errors:
+    with open(ERROR_LOG, "w", encoding="utf-8") as f:
+        for fpath, msg in errors:
+            f.write(f"{fpath},{msg}\n")
+    print(Fore.YELLOW + f"⚠️ Errors logged to: {ERROR_LOG}" + Style.RESET_ALL)
+
+# --- WRITE CHECKPOINT ---
+if not args.dry_run:
+    with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+        json.dump({"moved_files": [m[2] for m in moves]}, f, indent=2)
+    print(Fore.CYAN + f"Checkpoint written to {CHECKPOINT_FILE}" + Style.RESET_ALL)
+
+print(Fore.GREEN + f"\n🎉 Done! Moved {len(moves)} duplicate files." + Style.RESET_ALL)
+if args.dry_run:
+    print(Fore.CYAN + "[Dry Run] No files were actually moved." + Style.RESET_ALL)
+else:
+    print(Fore.CYAN + "Ready for next step: organize_by_date.py" + Style.RESET_ALL)
