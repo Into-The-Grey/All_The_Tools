@@ -26,35 +26,33 @@ No cloud. No vendor lock-in. Just pure Python, with serious power and polish.
 
 ## 🚀 Features
 
-- **Exact Duplicate Detection**
+- **Exact Duplicate Detection**  
   MD5-based scan for byte-for-byte duplicates (even across folders)
 
-- **Smart Duplicate Management**
+- **Smart Duplicate Management**  
   One file kept; the rest are safely logged and moved to `/Duplicates/`
 
-- **Date-Based Media Sorting**
-  Automatically organizes your media into `/Organized/YYYY/MM/DD/`
+- **Date-Based Media Sorting**  
+  Automatically organizes your media into `/Organized/YYYY/MM/DD/`  
   (Uses true capture date if available, not just modification time!)
 
-- **Offline NSFW Detection (Auto-Backend!)**
+- **Offline NSFW Detection (Auto-Backend!)**  
   *Works with either [NudeNet](https://github.com/notAI-tech/NudeNet) or [nsfw-detector](https://github.com/GantMan/nsfw_model)*
 
-  - Python 3.8–3.12: Uses NudeNet
-  - Python 3.11–3.13+: Uses nsfw-detector
+  - Python 3.8–3.12: Uses NudeNet or nsfw-detector
+  - Python 3.13+: Uses conda environment (Python 3.12) for nsfw-detector
   - If both unavailable, step is skipped with a warning
   - All flagged files logged and available for review/search
 
-- **AI-Powered Image & Video Tagging**
-
+- **AI-Powered Image & Video Tagging**  
   - Uses OpenAI CLIP (Hugging Face)
   - Adapts batch size and speed to your hardware (CUDA, CPU, RAM)
   - Auto-updates your tag vocabularies; manual editing supported
 
-- **Unified Searchable Index**
+- **Unified Searchable Index**  
   Combines tags, NSFW status, capture time, and more in `media_index.jsonl` for easy auditing or scripting
 
-- **Colorful, User-Friendly Pipeline**
-
+- **Colorful, User-Friendly Pipeline**  
   - Pipeline-level progress bar + step-by-step color logs
   - Time tracking and graceful auto-retry
   - DRY RUN support for safe experimentation
@@ -63,23 +61,23 @@ No cloud. No vendor lock-in. Just pure Python, with serious power and polish.
 
 ## 🧠 How It Works
 
-1. **Initialize Tag Files:**
+1. **Initialize Tag Files:**  
    Creates/reuses `/config/tags_sfw.json` & `/config/tags_nsfw.json`.
 
-2. **Find and Log Duplicates:**
+2. **Find and Log Duplicates:**  
    MD5-hashes all media, finds perfect matches, moves extra copies to `/Duplicates/`.
 
-3. **Organize by Date:**
+3. **Organize by Date:**  
    Reads EXIF/video metadata; sorts everything into `/Organized/YYYY/MM/DD/`.
 
-4. **NSFW Detection:**
-   Runs NudeNet or nsfw-detector (auto-detects and uses best backend).
+4. **NSFW Detection:**  
+   Runs in a dedicated Python 3.12 conda env with `nsfw-detector` if needed (auto-managed).  
    Logs and (optionally) moves unsafe files.
 
-5. **AI Smart Tagging:**
+5. **AI Smart Tagging:**  
    Images and video frames are labeled using CLIP; new tags added to vocabularies.
 
-6. **Unified Index:**
+6. **Unified Index:**  
    All metadata, tags, and NSFW results are merged into a fast-searchable `.jsonl` file.
 
 ---
@@ -119,7 +117,7 @@ Media_Organizer/
 ├── Duplicates/
 ├── Tagged/NSFW/
 └── venv/
-```
+````
 
 ---
 
@@ -170,6 +168,8 @@ python main.py
     - colorama
   ```
 
+  *If you have trouble installing `nsfw-detector`, make sure Miniconda is being used and `pip` is available in the environment. See [nsfw-detector PyPI page](https://pypi.org/project/nsfw-detector/) for any 3.12+ issues.*
+
 *Optional: [FFmpeg](https://ffmpeg.org/) in your PATH is highly recommended for best video support.*
 
 ---
@@ -189,9 +189,11 @@ python main.py
 
   - You may be on Python 3.13+ with no working backend.
   - The pipeline will auto-create and use a conda env if possible, but if no backend is available, NSFW is skipped with a warning.
+
 - **CUDA not used?**
 
   - Make sure you have [CUDA installed](https://developer.nvidia.com/cuda-downloads) and `torch` built for your GPU.
+
 - **Script failed mid-pipeline?**
 
   - Just rerun `main.py` and use `--resume` on failed steps.
@@ -222,5 +224,3 @@ python main.py
 ---
 
 **Ready to run? `python main.py` and watch the chaos become order.**
-
----
