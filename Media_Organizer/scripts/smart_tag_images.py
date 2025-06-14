@@ -1,9 +1,15 @@
-import os
 import sys
+
+# --- Allow for extra positional arg (e.g. media directory) and ignore it if not a flag
+if len(sys.argv) > 2 and not sys.argv[1].startswith("-"):
+    sys.argv[1] = sys.argv[2]
+    sys.argv = [sys.argv[0]] + sys.argv[1:]
+
+import os
 import json
-import torch # type: ignore
+import torch  # type: ignore
 from PIL import Image
-from transformers import CLIPProcessor, CLIPModel # type: ignore
+from transformers import CLIPProcessor, CLIPModel  # type: ignore
 import csv
 import argparse
 from tqdm import tqdm

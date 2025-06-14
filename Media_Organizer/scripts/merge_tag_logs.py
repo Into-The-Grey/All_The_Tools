@@ -1,3 +1,9 @@
+import sys
+
+# --- Allow for extra positional arg (e.g. media directory) and ignore it ---
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+    del sys.argv[1]
+
 import os
 import sys
 import json

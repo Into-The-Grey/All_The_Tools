@@ -1,5 +1,12 @@
-import os
 import sys
+
+# --- Allow for extra positional arg (e.g. media directory) and ignore it if not a flag
+if len(sys.argv) > 2 and not sys.argv[1].startswith("-"):
+    # This lets you run as: python find_duplicates.py /path --dry-run
+    sys.argv[1] = sys.argv[2]
+    sys.argv = [sys.argv[0]] + sys.argv[1:]
+
+import os
 import json
 import hashlib
 import argparse
@@ -90,7 +97,6 @@ def find_duplicate_files(base_dir, min_kb, error_log_path):
         for name in files:
             file_path = os.path.join(root, name)
             try:
-                # Skip symlinks and tiny files
                 if os.path.islink(file_path):
                     errors.append((file_path, "Symlink skipped"))
                     continue
@@ -118,7 +124,6 @@ def find_duplicate_files(base_dir, min_kb, error_log_path):
         except Exception as e:
             errors.append((file_path, str(e)))
             pbar.write(Fore.RED + f"❌ Error: {file_path} — {e}" + Style.RESET_ALL)
-    # Log errors
     if errors:
         with open(error_log_path, "w", encoding="utf-8") as elog:
             for path, err in errors:
@@ -173,7 +178,6 @@ if __name__ == "__main__":
     else:
         print(Fore.YELLOW + "[Dry Run] No logs written." + Style.RESET_ALL)
 
-    # Optional: Print summary
     for idx, (file_hash, files) in enumerate(dupes.items(), 1):
         print(Fore.MAGENTA + f"[Group {idx}] Hash: {file_hash}" + Style.RESET_ALL)
         for f in files:

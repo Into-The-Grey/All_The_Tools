@@ -1,5 +1,10 @@
-import os
 import sys
+
+# --- Allow for extra positional arg (e.g. media directory) and ignore it ---
+if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+    del sys.argv[1]
+
+import os
 import json
 import argparse
 from datetime import datetime
@@ -11,7 +16,7 @@ BANNER = f"""
 ███    ██ ███████ ██████  ████████ ███████ ██████      ████████ ██████  
 ████   ██ ██      ██   ██    ██    ██      ██   ██        ██    ██   ██ 
 ██ ██  ██ █████   ██████     ██    █████   ██████         ██    ██████  
-██  ██ ██ ██      ██   ██    ██    ██      ██   ██        ██    ██   ██ 
+██  ██ ██ ██      ██   ██    ██      ██   ██        ██    ██   ██   ██ 
 ██   ████ ███████ ██   ██    ██    ███████ ██   ██        ██    ██   ██ 
 {Style.RESET_ALL}
 """
@@ -35,9 +40,6 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config", "config.json")
 parser = argparse.ArgumentParser(
     description="Detect NSFW images (auto-backend, pipeline, with gusto)."
 )
-parser.add_argument(
-    "input_dir", help="Input media directory (ignored, uses Organized/)"
-)
 parser.add_argument("--dry-run", action="store_true", help="Preview, no changes made")
 parser.add_argument(
     "--resume", action="store_true", help="Resume from last checkpoint if available"
@@ -58,8 +60,8 @@ except Exception:
 
 if NSFW_BACKEND is None:
     try:
-        from nsfw_detector import predict # type: ignore
-        import tensorflow as tf # type: ignore
+        from nsfw_detector import predict  # type: ignore
+        import tensorflow as tf  # type: ignore
 
         NSFW_BACKEND = "nsfw-detector"
     except Exception:
@@ -120,7 +122,7 @@ if args.dry_run:
 
 # --- NSFW SCORING FUNCTION ---
 if NSFW_BACKEND == "nudenet":
-    classifier = NudeClassifier() # type: ignore
+    classifier = NudeClassifier()  # type: ignore
 
     def nsfw_score_func(filepath):
         result = classifier.classify(filepath)

@@ -1,5 +1,11 @@
-import os
 import sys
+
+# --- Allow for extra positional arg (e.g. media directory) and ignore it if not a flag
+if len(sys.argv) > 2 and not sys.argv[1].startswith("-"):
+    sys.argv[1] = sys.argv[2]
+    sys.argv = [sys.argv[0]] + sys.argv[1:]
+
+import os
 import json
 import shutil
 import argparse
@@ -73,13 +79,9 @@ def get_image_date(path):
     return None
 
 
-from pymediainfo import MediaInfo
-
-
 def get_video_date(path):
     try:
         info = MediaInfo.parse(path)
-        # Extra strict: bail out if info is a string (Pylance paranoia)
         if isinstance(info, str) or not hasattr(info, "tracks"):
             return None
         for track in info.tracks:
@@ -88,7 +90,6 @@ def get_video_date(path):
                     value = getattr(track, key, None)
                     if value:
                         try:
-                            # Try parsing ISO date first
                             return datetime.fromisoformat(value.split("T")[0])
                         except Exception:
                             try:

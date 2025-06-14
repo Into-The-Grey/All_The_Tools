@@ -17,6 +17,7 @@ REQUIREMENTS = os.path.join(BASE_DIR, "requirements.txt")
 SCRIPT_PATH = os.path.join(BASE_DIR, "scripts")
 CONFIG_PATH = os.path.join(BASE_DIR, "config")
 NSFW_ENV_YML = os.path.join(BASE_DIR, "nsfw_env.yml")
+TEMP_REQS = os.path.join(BASE_DIR, "requirements_main.txt")
 
 
 def run_detect_nsfw_conda(input_path):
@@ -92,9 +93,10 @@ with open(REQUIREMENTS, "r", encoding="utf-8") as rf:
             skip in line.lower() for skip in ["tensorflow", "nudenet", "nsfw-detector"]
         )
     ]
-with open("requirements_main.txt", "w", encoding="utf-8") as wf:
+with open(TEMP_REQS, "w", encoding="utf-8") as wf:
     wf.writelines(filtered)
-subprocess.run([PYTHON_EXEC, "-m", "pip", "install", "-r", "requirements_main.txt"])
+subprocess.run([PYTHON_EXEC, "-m", "pip", "install", "-r", TEMP_REQS])
+os.remove(TEMP_REQS)
 
 # === Step 3: Define scripts in order (detect_nsfw handled separately) ===
 SCRIPTS = [
