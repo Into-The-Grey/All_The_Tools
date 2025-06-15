@@ -1,6 +1,6 @@
 # AutoDork
 
-![AutoDork Logo](assets/AutoDork_logo.png)
+![AutoDork Logo](../assets/AutoDork_logo.png)
 
 ![GitHub license](https://img.shields.io/github/license/yourusername/AutoDork)
 
