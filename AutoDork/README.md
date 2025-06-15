@@ -2,7 +2,7 @@
 
 ![AutoDork Logo](../assets/AutoDork_logo.png)
 
-![GitHub license](https://img.shields.io/github/license/yourusername/AutoDork)
+![GitHub license](https://img.shields.io/github/license/Into-The-Grey/All_The_Tools?style=for-the-badge)
 
 
 AutoDork is a flexible, production-ready automated Google dorking suite for OSINT username hunting, public data discovery, and threat reconnaissance. Give it a username, email, or keyword and it’ll hammer through modular Google dork scripts, logging every result with easy tagging, review, and reporting.
