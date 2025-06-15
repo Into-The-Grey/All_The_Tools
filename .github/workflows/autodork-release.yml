@@ -1,0 +1,44 @@
+name: AutoDork Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'autodork-v*'
+
+jobs:
+  release:
+    name: Package and Release AutoDork
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Check Python version
+        run: python --version
+
+      - name: Remove old zip if exists
+        run: rm -f AutoDork.zip
+
+      - name: Zip AutoDork folder
+        run: |
+          cd AutoDork
+          zip -r ../AutoDork.zip . -x '*.git*'
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          files: AutoDork.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
