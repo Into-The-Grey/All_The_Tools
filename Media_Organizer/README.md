@@ -1,6 +1,6 @@
 # Media Organizer
 
-![Media Organizer Logo](assets/media_organizer_logo.png)
+![Media Organizer Logo](../assets/media_organizer_logo.png)
 
 ## Table of Contents
 
