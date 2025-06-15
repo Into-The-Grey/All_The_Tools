@@ -1,0 +1,6 @@
+googlesearch-python
+pyyaml
+rich
+inquirerpy
+jinja2
+tqdm

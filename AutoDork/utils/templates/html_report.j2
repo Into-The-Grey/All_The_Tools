@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>AutoDork Results</title></head>
+<body>
+<h1>AutoDork Results</h1>
+<table border=1>
+<tr><th>URL</th><th>Dorks</th></tr>
+{% for url, dorks in url_map.items() %}
+    <tr>
+        <td><a href="{{ url }}">{{ url }}</a></td>
+        <td>{{ ", ".join(dorks) }}</td>
+    </tr>
+{% endfor %}
+</table>
+</body></html>

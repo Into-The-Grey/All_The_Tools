@@ -1,0 +1,7 @@
+num_results: 8
+delay_min: 1.5
+delay_max: 4.0
+blacklist:
+  - pinterest.com
+  - ad.site
+output_formats: [json, csv, html, log]
